@@ -323,6 +323,50 @@ namespace Microsoft.Dnx.Runtime
                     assemblies.Add(name);
                 }
 
+                foreach (var assemblyPath in targetLibrary.ResourceAssemblies)
+                {
+                    var name = Path.GetFileNameWithoutExtension(assemblyPath);
+                    var assemblyName = new AssemblyName(name);
+                    string locale;
+                    if (assemblyPath.Properties.TryGetValue("locale", out locale))
+                    {
+#if DNXCORE50
+                        assemblyName.CultureName = locale;
+#elif DNX451
+                        assemblyName.CultureInfo = new System.Globalization.CultureInfo(locale);
+#else
+#error Unhandled target framework
+#endif
+                    }
+                    var path = Path.Combine(dependency.Path, assemblyPath);
+
+                    string replacementPath;
+                    if (Servicing.ServicingTable.TryGetReplacement(
+                        packageInfo.Id,
+                        packageInfo.Version,
+                        assemblyPath,
+                        out replacementPath))
+                    {
+                        _packageAssemblyLookup[assemblyName] = new PackageAssembly()
+                        {
+                            Path = replacementPath,
+                            RelativePath = assemblyPath,
+                            Library = dependency
+                        };
+                    }
+                    else
+                    {
+                        _packageAssemblyLookup[assemblyName] = new PackageAssembly()
+                        {
+                            Path = path,
+                            RelativePath = assemblyPath,
+                            Library = dependency
+                        };
+                    }
+
+                    assemblies.Add(name);
+                }
+
                 dependency.LoadableAssemblies = assemblies;
             }
         }

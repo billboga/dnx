@@ -27,7 +27,8 @@ namespace Microsoft.Dnx.Runtime.Loader
         {
             // TODO: preserve name and culture info (we don't need to look at any other information)
             PackageAssembly assemblyInfo;
-            if (_dependencyResolver.PackageAssemblyLookup.TryGetValue(new AssemblyName(assemblyName.Name), out assemblyInfo))
+
+            if (_dependencyResolver.PackageAssemblyLookup.TryGetValue(assemblyName, out assemblyInfo))
             {
                 return loadContext.LoadFile(assemblyInfo.Path);
             }

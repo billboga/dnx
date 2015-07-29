@@ -11,6 +11,14 @@ public class Program
         Console.WriteLine(resources.GetString("HelloWorld"));
         Console.WriteLine(resources.GetString("HelloWorld", new CultureInfo("fr-FR")));
 
+        resources = new ResourceManager("ResourcesLibrary.Test", Assembly.Load(new AssemblyName("ResourcesLibrary")));
+        Console.WriteLine(resources.GetString("Welcome", new CultureInfo("fr-FR")));
+
+        var edmAssembly = Assembly.Load(new AssemblyName("Microsoft.Data.Edm"));
+        var edmResource = new ResourceManager("Microsoft.Data.Edm", edmAssembly);
+        Console.WriteLine(edmResource.GetString("Bad_CyclicEntity"));
+        Console.WriteLine(edmResource.GetString("Bad_CyclicEntity", new CultureInfo("fr")));
+
         var resourceStream = typeof(Program).GetTypeInfo().Assembly.GetManifestResourceStream("HelloWorld.compiler.resources.HTMLPage1.html");
 
         if (resourceStream == null)
