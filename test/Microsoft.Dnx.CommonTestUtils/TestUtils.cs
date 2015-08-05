@@ -234,7 +234,7 @@ namespace Microsoft.Dnx.CommonTestUtils
             return Path.Combine(rootDir, "samples");
         }
 
-        public static DisposableDir PrepareTemporarySamplesFolder(string runtimeHomeDir)
+        public static DisposableDir PrepareTemporarySamplesFolder(string runtimeHomeDir, bool globalJson = true)
         {
             var tempDir = new DisposableDir();
             TestUtils.CopyFolder(TestUtils.GetSamplesFolder(), tempDir);
@@ -242,9 +242,13 @@ namespace Microsoft.Dnx.CommonTestUtils
             // Make sure sample projects depend on runtime components from newly built dnx
             var currentDnxSolutionRootDir = ProjectResolver.ResolveRootDirectory(Directory.GetCurrentDirectory());
             var currentDnxSolutionSrcPath = Path.Combine(currentDnxSolutionRootDir, "src").Replace("\\", "\\\\");
-            var samplesGlobalJson = new JObject();
-            samplesGlobalJson["projects"] = new JArray(new[] { currentDnxSolutionSrcPath });
-            File.WriteAllText(Path.Combine(tempDir, GlobalSettings.GlobalFileName), samplesGlobalJson.ToString());
+
+            if (globalJson)
+            {
+                var samplesGlobalJson = new JObject();
+                samplesGlobalJson["projects"] = new JArray(new[] { currentDnxSolutionSrcPath });
+                File.WriteAllText(Path.Combine(tempDir, GlobalSettings.GlobalFileName), samplesGlobalJson.ToString());
+            }
 
             // Make sure package restore can be successful
             const string nugetConfigName = "NuGet.Config";

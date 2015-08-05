@@ -38,7 +38,6 @@ namespace Microsoft.Dnx.Runtime
             ProjectDirectory = projectDirectory;
             Configuration = configuration;
             RootDirectory = Runtime.ProjectResolver.ResolveRootDirectory(ProjectDirectory);
-            ProjectResolver = new ProjectResolver(ProjectDirectory, RootDirectory);
             FrameworkReferenceResolver = new FrameworkReferenceResolver();
             _serviceProvider = new ServiceProvider(hostServices);
 
@@ -47,13 +46,12 @@ namespace Microsoft.Dnx.Runtime
             var referenceAssemblyDependencyResolver = new ReferenceAssemblyDependencyResolver(FrameworkReferenceResolver);
             NuGetDependencyProvider = new NuGetDependencyResolver(new PackageRepository(PackagesDirectory));
             var gacDependencyResolver = new GacDependencyResolver();
-            ProjectDepencyProvider = new ProjectReferenceDependencyProvider(ProjectResolver);
             var unresolvedDependencyProvider = new UnresolvedDependencyProvider();
 
             var projectName = PathUtility.GetDirectoryName(ProjectDirectory);
 
             Project project;
-            if (ProjectResolver.TryResolveProject(projectName, out project))
+            if (Project.TryGetProject(ProjectDirectory, out project))
             {
                 Project = project;
             }
@@ -81,6 +79,9 @@ namespace Microsoft.Dnx.Runtime
                 if (validLockFile || skipLockFileValidation)
                 {
                     NuGetDependencyProvider.ApplyLockFile(_lockFile);
+
+                    ProjectResolver = new LockFileBasedProjectResolver(_lockFile, ProjectDirectory, Project);
+                    ProjectDepencyProvider = new ProjectReferenceDependencyProvider(ProjectResolver);
 
                     DependencyWalker = new DependencyWalker(new IDependencyProvider[] {
                         ProjectDepencyProvider,

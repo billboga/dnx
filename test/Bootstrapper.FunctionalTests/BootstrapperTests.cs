@@ -109,7 +109,6 @@ class Program
 
             Assert.Equal(0, exitCode);
             Assert.Contains(TestUtils.GetRuntimeVersion(), stdOut);
-
         }
 
         [Theory]
@@ -118,7 +117,7 @@ class Program
         {
             var runtimeHomeDir = _fixture.GetRuntimeHomeDir(flavor, os, architecture);
 
-            using (var tempSamplesDir = TestUtils.PrepareTemporarySamplesFolder(runtimeHomeDir))
+            using (var tempSamplesDir = TestUtils.PrepareTemporarySamplesFolder(runtimeHomeDir, globalJson: false))
             {
                 var testAppPath = Path.Combine(tempSamplesDir, "HelloWorld");
 
@@ -149,7 +148,7 @@ command
         {
             var runtimeHomeDir = _fixture.GetRuntimeHomeDir(flavor, os, architecture);
 
-            using (var tempSamplesDir = TestUtils.PrepareTemporarySamplesFolder(runtimeHomeDir))
+            using (var tempSamplesDir = TestUtils.PrepareTemporarySamplesFolder(runtimeHomeDir, globalJson: false))
             {
                 var testAppPath = Path.Combine(tempSamplesDir, "HelloWorld");
 
@@ -182,7 +181,7 @@ command
         {
             var runtimeHomeDir = _fixture.GetRuntimeHomeDir(flavor, os, architecture);
 
-            using (var tempSamplesDir = TestUtils.PrepareTemporarySamplesFolder(runtimeHomeDir))
+            using (var tempSamplesDir = TestUtils.PrepareTemporarySamplesFolder(runtimeHomeDir, globalJson: false))
             {
                 var testAppPath = Path.Combine(tempSamplesDir, "HelloWorld");
                 var testAppProjectFile = Path.Combine(testAppPath, Project.ProjectFileName);
@@ -215,7 +214,7 @@ command
             var outputFolder = flavor == "coreclr" ? "dnxcore50" : "dnx451";
             var runtimeHomeDir = _fixture.GetRuntimeHomeDir(flavor, os, architecture);
 
-            using (var tempSamplesDir = TestUtils.PrepareTemporarySamplesFolder(runtimeHomeDir))
+            using (var tempSamplesDir = TestUtils.PrepareTemporarySamplesFolder(runtimeHomeDir, globalJson: false))
             using (var tempDir = TestUtils.CreateTempDir())
             {
                 var sampleAppRoot = Path.Combine(tempSamplesDir, "HelloWorld");
@@ -328,13 +327,13 @@ Hello, code!
   ""locked"": false,
   ""version"": 1,
   ""targets"": {
-    ""DNX,Version=v4.5.1"": {}
+    ""DNX,Version=v4.5.1"": {},
     ""DNX,Version=v4.5.2"": {}
   },
   ""libraries"": {},
   ""projectFileDependencyGroups"": {
     """": [],
-    ""DNX,Version=v4.5.1"": []
+    ""DNX,Version=v4.5.1"": [],
     ""DNX,Version=v4.5.2"": []
   }
 }";
@@ -388,13 +387,13 @@ Hello, code!
   ""locked"": false,
   ""version"": 1,
   ""targets"": {
-    ""DNX,Version=v4.6"": {}
+    ""DNX,Version=v4.6"": {},
     ""DNX,Version=v4.5.1"": {}
   },
   ""libraries"": {},
   ""projectFileDependencyGroups"": {
     """": [],
-    ""DNX,Version=v4.6"": []
+    ""DNX,Version=v4.6"": [],
     ""DNX,Version=v4.5.1"": []
   }
 }";
@@ -471,15 +470,15 @@ Hello, code!
   ""locked"": false,
   ""version"": 1,
   ""targets"": {
-    ""DNX,Version=v4.5.1"": {}
-    ""DNX,Version=v4.5.2"": {}
+    ""DNX,Version=v4.5.1"": {},
+    ""DNX,Version=v4.5.2"": {},
     ""DNX,Version=v4.6"": {}
   },
   ""libraries"": {},
   ""projectFileDependencyGroups"": {
     """": [],
-    ""DNX,Version=v4.5.1"": []
-    ""DNX,Version=v4.5.2"": []
+    ""DNX,Version=v4.5.1"": [],
+    ""DNX,Version=v4.5.2"": [],
     ""DNX,Version=v4.6"": []
   }
 }";
@@ -502,6 +501,7 @@ Hello, code!
                     stdErr: out stdErr,
                     environment: new Dictionary<string, string> { { EnvironmentNames.Trace, null } },
                     workingDir: tempDir);
+
                 Assert.Equal(0, exitCode);
                 Assert.Equal(expectedOutput, stdOut.Trim());
             }
