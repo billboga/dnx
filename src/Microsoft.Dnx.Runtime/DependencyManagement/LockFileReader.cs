@@ -110,17 +110,30 @@ namespace Microsoft.Dnx.Runtime.DependencyManagement
                 throw FileFormatException.Create("The value type is not object.", json);
             }
 
-            var library = new LockFileLibrary();
             var parts = property.Split(new[] { '/' }, 2);
-            library.Name = parts[0];
-            if (parts.Length == 2)
+            var name = parts[0];
+            var version = parts.Length == 2 ? SemanticVersion.Parse(parts[1]) : null;
+
+            if (jobject.Keys.Contains("relativePath"))
             {
-                library.Version = SemanticVersion.Parse(parts[1]);
+                return new LockFileProjectLibrary
+                {
+                    Name = name,
+                    Version = version,
+                    RelativePath = ReadString(jobject.Value("relativePath"))
+                };
             }
-            library.IsServiceable = ReadBool(jobject, "serviceable", defaultValue: false);
-            library.Sha512 = ReadString(jobject.Value("sha512"));
-            library.Files = ReadPathArray(jobject.Value("files"), ReadString);
-            return library;
+            else
+            {
+                return new LockFilePackageLibrary
+                {
+                    Name = name,
+                    Version = version,
+                    IsServiceable = ReadBool(jobject, "serviceable", defaultValue: false),
+                    Sha512 = ReadString(jobject.Value("sha512")),
+                    Files = ReadPathArray(jobject.Value("files"), ReadString)
+                };
+            }
         }
 
         private LockFileTarget ReadTarget(string property, JsonValue json)

@@ -143,28 +143,58 @@ namespace Microsoft.Dnx.Tooling
 
         private LockFileLibrary ReadLibrary(string property, JToken json)
         {
-            var library = new LockFileLibrary();
             var parts = property.Split(new[] { '/' }, 2);
-            library.Name = parts[0];
-            if (parts.Length == 2)
+            var name = parts[0];
+            var version = parts.Length == 2 ? SemanticVersion.Parse(parts[1]) : null;
+
+            var relativePath = ReadString(json["relativePath"]);
+            if (relativePath != null)
             {
-                library.Version = SemanticVersion.Parse(parts[1]);
+                return new LockFileProjectLibrary
+                {
+                    Name = name,
+                    Version = version,
+                    RelativePath = relativePath
+                };
             }
-            library.IsServiceable = ReadBool(json, "serviceable", defaultValue: false);
-            library.Sha512 = ReadString(json["sha512"]);
-            library.Files = ReadPathArray(json["files"] as JArray, ReadString);
-            return library;
+            else
+            {
+                return new LockFilePackageLibrary
+                {
+                    Name = name,
+                    Version = version,
+                    IsServiceable = ReadBool(json, "serviceable", defaultValue: false),
+                    Sha512 = ReadString(json["sha512"]),
+                    Files = ReadPathArray(json["files"] as JArray, ReadString)
+                };
+            }
         }
 
         private JProperty WriteLibrary(LockFileLibrary library)
         {
             var json = new JObject();
-            if (library.IsServiceable)
+            if (library is LockFileProjectLibrary)
             {
-                WriteBool(json, "serviceable", library.IsServiceable);
+                var projectLibrary = (LockFileProjectLibrary)library;
+
+                json["relativePath"] = WriteString(projectLibrary.RelativePath);
             }
-            json["sha512"] = WriteString(library.Sha512);
-            WritePathArray(json, "files", library.Files.OrderBy(f => f), WriteString);
+            else if (library is LockFilePackageLibrary)
+            {
+                var packageLibrary = (LockFilePackageLibrary)library;
+
+                if (packageLibrary.IsServiceable)
+                {
+                    WriteBool(json, "serviceable", packageLibrary.IsServiceable);
+                }
+                json["sha512"] = WriteString(packageLibrary.Sha512);
+                WritePathArray(json, "files", packageLibrary.Files.OrderBy(f => f), WriteString);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unknown type of {nameof(LockFileLibrary)}: {library.GetType().Name}.");
+            }
+
             return new JProperty(
                 library.Name + "/" + library.Version.ToString(),
                 json);

@@ -833,36 +833,57 @@ namespace Microsoft.Dnx.Tooling
             foreach (var item in graphItems.OrderBy(x => x.Match.Library, new LibraryComparer()))
             {
                 var library = item.Match.Library;
-                var packageInfo = repository.FindPackagesById(library.Name)
-                    .FirstOrDefault(p => p.Version == library.Version);
-
-                if (packageInfo == null)
+                if (library.Name == project.Name)
                 {
-                    if (library.Name != project.Name)
-                    {
-                        Runtime.Project projectReference;
-                        if (projectResolver.TryResolveProject(library.Name, out projectReference))
-                        {
-                            var projectLocation = new LockFileProjectLocation(project, projectReference);
-                            lockFile.ProjectLocations.Add(projectLocation);
-                        }
-                    }
-
                     continue;
                 }
 
-                var package = packageInfo.Package;
+                var packageInfo = repository.FindPackagesById(library.Name)
+                                            .FirstOrDefault(p => p.Version == library.Version);
+
+                var projectInfo = projectResolver.FindProject(library.Name);
+
+                if (packageInfo != null && projectInfo != null)
+                {
+                    throw new InvalidOperationException($"Dependency can't be both project and package: {library.Name}");
+                }
+
 
                 LockFileLibrary previousLibrary = null;
                 previousLibraries?.TryGetValue(Tuple.Create(library.Name, library.Version), out previousLibrary);
 
-                var lockFileLib = LockFileUtils.CreateLockFileLibrary(
-                    previousLibrary,
-                    resolver,
-                    package,
-                    correctedPackageName: library.Name);
+                LockFileLibrary lockFileLib = null;
+                if (packageInfo != null)
+                {
+                    var package = packageInfo.Package;
 
-                lockFile.Libraries.Add(lockFileLib);
+                    // The previousLibrary can't be a project, otherwise exception has been thrown.
+                    lockFileLib = LockFileUtils.CreateLockFilePackageLibrary(
+                        (LockFilePackageLibrary)previousLibrary,
+                        resolver,
+                        package,
+                        correctedPackageName: library.Name);
+                }
+                else if (projectInfo != null)
+                {
+                    // TEMP: projects section will be removed
+                    var projectLocation = new LockFileProjectLocation(project, projectInfo);
+                    lockFile.ProjectLocations.Add(projectLocation);
+
+                    lockFileLib = LockFileUtils.CreateLockFileProjectLibrary(
+                        (LockFileProjectLibrary)previousLibrary,
+                        project: project,
+                        library: projectInfo);
+                }
+
+                if (lockFileLib != null)
+                {
+                    lockFile.Libraries.Add(lockFileLib);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unresolved library: {library.Name}");
+                }
             }
 
             var libraries = lockFile.Libraries.ToDictionary(lib => Tuple.Create(lib.Name, lib.Version));

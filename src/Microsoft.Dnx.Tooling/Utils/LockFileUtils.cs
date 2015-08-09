@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.Versioning;
+using Microsoft.Dnx.Runtime;
 using Microsoft.Dnx.Runtime.DependencyManagement;
 using NuGet;
 using NuGet.ContentModel;
@@ -19,9 +20,9 @@ namespace Microsoft.Dnx.Tooling.Utils
         private static readonly Func<string, object> PlaceholderFileParser =
             s => string.Equals(s, "_._", StringComparison.Ordinal) ? s : null;
 
-        public static LockFileLibrary CreateLockFileLibrary(LockFileLibrary previousLibrary, IPackagePathResolver resolver, IPackage package, string correctedPackageName = null)
+        public static LockFilePackageLibrary CreateLockFilePackageLibrary(LockFilePackageLibrary previousLibrary, IPackagePathResolver resolver, IPackage package, string correctedPackageName = null)
         {
-            var lockFileLib = new LockFileLibrary();
+            var lockFileLib = new LockFilePackageLibrary();
 
             // package.Id is read from nuspec and it might be in wrong casing.
             // correctedPackageName should be the package name used by dependency graph and
@@ -66,6 +67,28 @@ namespace Microsoft.Dnx.Tooling.Utils
             return lockFileLib;
         }
 
+        public static LockFileLibrary CreateLockFileProjectLibrary(LockFileProjectLibrary previousLibrary,
+                                                                   Runtime.Project project,
+                                                                   Runtime.Project library)
+        {
+            var result = new LockFileProjectLibrary()
+            {
+                Name = library.Name,
+                Version = library.Version
+            };
+
+            if (previousLibrary?.Name == library.Name && previousLibrary?.Version == library.Version)
+            {
+                result.RelativePath = previousLibrary.RelativePath;
+            }
+            else
+            {
+                result.RelativePath = PathUtility.GetRelativePath(project.ProjectFilePath, library.ProjectFilePath, '/');
+            }
+
+            return result;
+        }
+
         public static LockFileTargetLibrary CreateLockFileTargetLibrary(LockFileLibrary library, IPackage package, RestoreContext context, string correctedPackageName)
         {
             var lockFileLib = new LockFileTargetLibrary();
@@ -78,104 +101,111 @@ namespace Microsoft.Dnx.Tooling.Utils
             // it has the correct casing that runtime needs during dependency resolution.
             lockFileLib.Name = correctedPackageName ?? package.Id;
             lockFileLib.Version = package.Version;
-            var files = library.Files.Select(p => p.Replace(Path.DirectorySeparatorChar, '/'));
-            var contentItems = new ContentItemCollection();
-            contentItems.Load(files);
 
-            IEnumerable<PackageDependencySet> dependencySet;
-            if (VersionUtility.GetNearest(framework, package.DependencySets, out dependencySet))
+            var packageLibrary = library as LockFilePackageLibrary;
+            var projectLibrary = library as LockFileProjectLibrary;
+
+            if (packageLibrary != null)
             {
-                var set = dependencySet.FirstOrDefault()?.Dependencies?.ToList();
+                var files = packageLibrary.Files.Select(p => p.Replace(Path.DirectorySeparatorChar, '/'));
+                var contentItems = new ContentItemCollection();
+                contentItems.Load(files);
 
-                if (set != null)
+                IEnumerable<PackageDependencySet> dependencySet;
+                if (VersionUtility.GetNearest(framework, package.DependencySets, out dependencySet))
                 {
-                    lockFileLib.Dependencies = set;
-                }
-            }
+                    var set = dependencySet.FirstOrDefault()?.Dependencies?.ToList();
 
-            // TODO: Remove this when we do #596
-            // ASP.NET Core and .NET Core 5.0 don't have framework reference assemblies
-            if (!VersionUtility.IsPackageBased(framework))
-            {
-                IEnumerable<FrameworkAssemblyReference> frameworkAssemblies;
-                if (VersionUtility.GetNearest(framework, package.FrameworkAssemblies, out frameworkAssemblies))
-                {
-                    AddFrameworkReferences(lockFileLib, framework, frameworkAssemblies);
+                    if (set != null)
+                    {
+                        lockFileLib.Dependencies = set;
+                    }
                 }
 
-                // Add framework assemblies with empty supported frameworks
-                AddFrameworkReferences(lockFileLib, framework, package.FrameworkAssemblies.Where(f => !f.SupportedFrameworks.Any()));
-            }
-
-            var patterns = PatternDefinitions.DotNetPatterns;
-
-            var criteriaBuilderWithTfm = new SelectionCriteriaBuilder(patterns.Properties.Definitions);
-            var criteriaBuilderWithoutTfm = new SelectionCriteriaBuilder(patterns.Properties.Definitions);
-
-            if (context.RuntimeSpecs != null)
-            {
-                foreach (var runtimeSpec in context.RuntimeSpecs)
+                // TODO: Remove this when we do #596
+                // ASP.NET Core and .NET Core 5.0 don't have framework reference assemblies
+                if (!VersionUtility.IsPackageBased(framework))
                 {
-                    criteriaBuilderWithTfm = criteriaBuilderWithTfm
-                        .Add["tfm", framework]["rid", runtimeSpec.Name];
+                    IEnumerable<FrameworkAssemblyReference> frameworkAssemblies;
+                    if (VersionUtility.GetNearest(framework, package.FrameworkAssemblies, out frameworkAssemblies))
+                    {
+                        AddFrameworkReferences(lockFileLib, framework, frameworkAssemblies);
+                    }
 
-                    criteriaBuilderWithoutTfm = criteriaBuilderWithoutTfm
-                        .Add["rid", runtimeSpec.Name];
+                    // Add framework assemblies with empty supported frameworks
+                    AddFrameworkReferences(lockFileLib, framework, package.FrameworkAssemblies.Where(f => !f.SupportedFrameworks.Any()));
                 }
-            }
 
-            criteriaBuilderWithTfm = criteriaBuilderWithTfm
-                .Add["tfm", framework];
+                var patterns = PatternDefinitions.DotNetPatterns;
 
-            var criteria = criteriaBuilderWithTfm.Criteria;
+                var criteriaBuilderWithTfm = new SelectionCriteriaBuilder(patterns.Properties.Definitions);
+                var criteriaBuilderWithoutTfm = new SelectionCriteriaBuilder(patterns.Properties.Definitions);
 
-            var compileGroup = contentItems.FindBestItemGroup(criteria, patterns.CompileTimeAssemblies, patterns.ManagedAssemblies);
-            if (compileGroup != null)
-            {
-                lockFileLib.CompileTimeAssemblies = compileGroup.Items.Select(t => (LockFileItem)t.Path).ToList();
-            }
-
-            var runtimeGroup = contentItems.FindBestItemGroup(criteria, patterns.ManagedAssemblies);
-            if (runtimeGroup != null)
-            {
-                lockFileLib.RuntimeAssemblies = runtimeGroup.Items.Select(p => (LockFileItem)p.Path).ToList();
-            }
-
-            var resourceGroup = contentItems.FindBestItemGroup(criteria, patterns.ResourceAssemblies);
-            if (resourceGroup != null)
-            {
-                lockFileLib.ResourceAssemblies = resourceGroup.Items.Select(ToResourceLockFileItem).ToList();
-            }
-
-            var nativeGroup = contentItems.FindBestItemGroup(criteriaBuilderWithoutTfm.Criteria, patterns.NativeLibraries);
-            if (nativeGroup != null)
-            {
-                lockFileLib.NativeLibraries = nativeGroup.Items.Select(p => (LockFileItem)p.Path).ToList();
-            }
-
-            // COMPAT: Support lib/contract so older packages can be consumed
-            string contractPath = "lib/contract/" + package.Id + ".dll";
-            var hasContract = files.Any(path => path == contractPath);
-            var hasLib = lockFileLib.RuntimeAssemblies.Any();
-
-            if (hasContract && hasLib && !VersionUtility.IsDesktop(framework))
-            {
-                lockFileLib.CompileTimeAssemblies.Clear();
-                lockFileLib.CompileTimeAssemblies.Add(contractPath);
-            }
-
-            // See if there's a list of specific references defined for this target framework
-            IEnumerable<PackageReferenceSet> referenceSets;
-            if (VersionUtility.GetNearest(framework, package.PackageAssemblyReferences, out referenceSets))
-            {
-                // Get the first compatible reference set
-                var referenceSet = referenceSets.FirstOrDefault();
-
-                if (referenceSet != null)
+                if (context.RuntimeSpecs != null)
                 {
-                    // Remove all assemblies of which names do not appear in the References list
-                    lockFileLib.RuntimeAssemblies.RemoveAll(path => path.Path.StartsWith("lib/") && !referenceSet.References.Contains(Path.GetFileName(path), StringComparer.OrdinalIgnoreCase));
-                    lockFileLib.CompileTimeAssemblies.RemoveAll(path => path.Path.StartsWith("lib/") && !referenceSet.References.Contains(Path.GetFileName(path), StringComparer.OrdinalIgnoreCase));
+                    foreach (var runtimeSpec in context.RuntimeSpecs)
+                    {
+                        criteriaBuilderWithTfm = criteriaBuilderWithTfm
+                            .Add["tfm", framework]["rid", runtimeSpec.Name];
+
+                        criteriaBuilderWithoutTfm = criteriaBuilderWithoutTfm
+                            .Add["rid", runtimeSpec.Name];
+                    }
+                }
+
+                criteriaBuilderWithTfm = criteriaBuilderWithTfm
+                    .Add["tfm", framework];
+
+                var criteria = criteriaBuilderWithTfm.Criteria;
+
+                var compileGroup = contentItems.FindBestItemGroup(criteria, patterns.CompileTimeAssemblies, patterns.ManagedAssemblies);
+                if (compileGroup != null)
+                {
+                    lockFileLib.CompileTimeAssemblies = compileGroup.Items.Select(t => (LockFileItem)t.Path).ToList();
+                }
+
+                var runtimeGroup = contentItems.FindBestItemGroup(criteria, patterns.ManagedAssemblies);
+                if (runtimeGroup != null)
+                {
+                    lockFileLib.RuntimeAssemblies = runtimeGroup.Items.Select(p => (LockFileItem)p.Path).ToList();
+                }
+
+                var resourceGroup = contentItems.FindBestItemGroup(criteria, patterns.ResourceAssemblies);
+                if (resourceGroup != null)
+                {
+                    lockFileLib.ResourceAssemblies = resourceGroup.Items.Select(ToResourceLockFileItem).ToList();
+                }
+
+                var nativeGroup = contentItems.FindBestItemGroup(criteriaBuilderWithoutTfm.Criteria, patterns.NativeLibraries);
+                if (nativeGroup != null)
+                {
+                    lockFileLib.NativeLibraries = nativeGroup.Items.Select(p => (LockFileItem)p.Path).ToList();
+                }
+
+                // COMPAT: Support lib/contract so older packages can be consumed
+                string contractPath = "lib/contract/" + package.Id + ".dll";
+                var hasContract = files.Any(path => path == contractPath);
+                var hasLib = lockFileLib.RuntimeAssemblies.Any();
+
+                if (hasContract && hasLib && !VersionUtility.IsDesktop(framework))
+                {
+                    lockFileLib.CompileTimeAssemblies.Clear();
+                    lockFileLib.CompileTimeAssemblies.Add(contractPath);
+                }
+
+                // See if there's a list of specific references defined for this target framework
+                IEnumerable<PackageReferenceSet> referenceSets;
+                if (VersionUtility.GetNearest(framework, package.PackageAssemblyReferences, out referenceSets))
+                {
+                    // Get the first compatible reference set
+                    var referenceSet = referenceSets.FirstOrDefault();
+
+                    if (referenceSet != null)
+                    {
+                        // Remove all assemblies of which names do not appear in the References list
+                        lockFileLib.RuntimeAssemblies.RemoveAll(path => path.Path.StartsWith("lib/") && !referenceSet.References.Contains(Path.GetFileName(path), StringComparer.OrdinalIgnoreCase));
+                        lockFileLib.CompileTimeAssemblies.RemoveAll(path => path.Path.StartsWith("lib/") && !referenceSet.References.Contains(Path.GetFileName(path), StringComparer.OrdinalIgnoreCase));
+                    }
                 }
             }
 
