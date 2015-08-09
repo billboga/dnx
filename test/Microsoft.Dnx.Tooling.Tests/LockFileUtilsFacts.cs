@@ -4,8 +4,8 @@
 using System.IO;
 using System.Linq;
 using Microsoft.Dnx.CommonTestUtils;
+using Microsoft.Dnx.Runtime.Helpers;
 using Microsoft.Dnx.Tooling.Utils;
-using Microsoft.Dnx.Runtime;
 using Xunit;
 
 namespace Microsoft.Dnx.Tooling.Tests
@@ -18,7 +18,7 @@ namespace Microsoft.Dnx.Tooling.Tests
         [InlineData("UnserviceableLib2", false)]
         public void BuildPackageAndCheckServiceability(string projectName, bool expectedServiceability)
         {
-            var rootDir = ProjectResolver.ResolveRootDirectory(Directory.GetCurrentDirectory());
+            var rootDir = ProjectPathHelper.ResolveRootDirectory(Directory.GetCurrentDirectory());
             var projectSrcDir = Path.Combine(rootDir, "misc", "ServicingTestProjects", projectName);
             const string configuration = "Debug";
 

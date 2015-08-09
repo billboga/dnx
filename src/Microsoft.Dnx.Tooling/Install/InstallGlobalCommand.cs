@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Dnx.Runtime;
+using Microsoft.Dnx.Runtime.Helpers;
 using Microsoft.Dnx.Tooling.Restore.NuGet;
 using NuGet;
 
@@ -152,7 +153,7 @@ namespace Microsoft.Dnx.Tooling
             // If the version is missing, try to find the latest version
             if (string.IsNullOrEmpty(packageVersion))
             {
-                var rootDirectory = ProjectResolver.ResolveRootDirectory(_commandsRepository.Root.Root);
+                var rootDirectory = ProjectPathHelper.ResolveRootDirectory(_commandsRepository.Root.Root);
                 var config = NuGetConfig.ForSolution(rootDirectory, RestoreCommand.FileSystem);
 
                 var packageFeeds = new List<IPackageFeed>();

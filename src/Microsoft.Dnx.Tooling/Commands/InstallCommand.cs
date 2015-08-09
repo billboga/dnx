@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Dnx.Tooling.Restore.NuGet;
 using Microsoft.Dnx.Runtime;
 using NuGet;
+using Microsoft.Dnx.Runtime.Helpers;
 
 namespace Microsoft.Dnx.Tooling
 {
@@ -42,7 +43,7 @@ namespace Microsoft.Dnx.Tooling
             // Create source provider from solution settings
             _addCommand.ProjectDir = _addCommand.ProjectDir ?? Directory.GetCurrentDirectory();
 
-            var rootDir = ProjectResolver.ResolveRootDirectory(_addCommand.ProjectDir);
+            var rootDir = ProjectPathHelper.ResolveRootDirectory(_addCommand.ProjectDir);
             var fileSystem = new PhysicalFileSystem(Directory.GetCurrentDirectory());
             var settings = SettingsUtils.ReadSettings(solutionDir: rootDir,
                 nugetConfigFile: null,

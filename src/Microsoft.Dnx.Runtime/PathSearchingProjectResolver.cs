@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -6,34 +6,34 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Microsoft.Dnx.Runtime.DependencyManagement;
+using Microsoft.Dnx.Runtime.Helpers;
 
 namespace Microsoft.Dnx.Runtime
 {
-    public class ProjectResolver : IProjectResolver
+    public class PathSearchBasedProjectResolver : IProjectResolver
     {
         private readonly HashSet<string> _searchPaths = new HashSet<string>();
         private ILookup<string, ProjectInformation> _projects;
+        private Dictionary<string, string> _projectsPaths;
 
-        public ProjectResolver(string projectPath)
+        public PathSearchBasedProjectResolver(string projectPath)
         {
-            var rootPath = ResolveRootDirectory(projectPath);
+            var rootPath = ProjectPathHelper.ResolveRootDirectory(projectPath);
             Initialize(projectPath, rootPath);
         }
 
-        public ProjectResolver(string projectPath, string rootPath)
+        public PathSearchBasedProjectResolver(string projectPath, string rootPath)
         {
             Initialize(projectPath, rootPath);
         }
 
         public IEnumerable<string> SearchPaths
         {
-            get
-            {
-                return _searchPaths;
-            }
+            get { return _searchPaths; }
         }
 
-        public bool TryResolveProject(string name, out Project project)
+        public bool TryResolveProject(string name, out Runtime.Project project)
         {
             project = null;
 
@@ -54,6 +54,11 @@ namespace Microsoft.Dnx.Runtime
 
             project = candidates.SingleOrDefault()?.Project;
             return project != null;
+        }
+
+        public void ApplyLockFile(LockFile lockFile)
+        {
+            _projectsPaths = lockFile.ProjectLocations.ToDictionary(location => location.Name, location => location.RelativePath);
         }
 
         private void Initialize(string projectPath, string rootPath)
@@ -86,25 +91,6 @@ namespace Microsoft.Dnx.Runtime
                 .ToLookup(d => d.Name);
         }
 
-        public static string ResolveRootDirectory(string projectPath)
-        {
-            var di = new DirectoryInfo(projectPath);
-
-            while (di.Parent != null)
-            {
-                var globalJsonPath = Path.Combine(di.FullName, GlobalSettings.GlobalFileName);
-
-                if (File.Exists(globalJsonPath))
-                {
-                    return di.FullName;
-                }
-
-                di = di.Parent;
-            }
-
-            // If we don't find any files then make the project folder the root
-            return projectPath;
-        }
 
         private class ProjectInformation
         {

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Dnx.Runtime;
+using Microsoft.Dnx.Runtime.Helpers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NuGet;
@@ -50,7 +51,7 @@ namespace Microsoft.Dnx.Tooling.SourceControl
                 return false;
             }
 
-            _solutionRoot = ProjectResolver.ResolveRootDirectory(projectFile);
+            _solutionRoot = ProjectPathHelper.ResolveRootDirectory(projectFile);
 
             var globalFile = GlobalSettings.GetGlobalFilePath(_solutionRoot);
             if (!File.Exists(globalFile))

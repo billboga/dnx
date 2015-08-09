@@ -131,8 +131,14 @@ namespace Microsoft.Dnx.Tooling
             json["version"] = new JValue(Runtime.Constants.LockFileVersion);
             json["targets"] = WriteObject(lockFile.Targets, WriteTarget);
             json["libraries"] = WriteObject(lockFile.Libraries, WriteLibrary);
+            json["projects"] = WriteObject(lockFile.ProjectLocations, WriteProjectLocation);
             json["projectFileDependencyGroups"] = WriteObject(lockFile.ProjectFileDependencyGroups, WriteProjectFileDependencyGroup);
             return json;
+        }
+
+        private JProperty WriteProjectLocation(LockFileProjectLocation location)
+        {
+            return new JProperty(location.Name, location.RelativePath);
         }
 
         private LockFileLibrary ReadLibrary(string property, JToken json)

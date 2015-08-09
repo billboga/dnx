@@ -11,6 +11,7 @@ using Microsoft.Dnx.Compilation.Caching;
 using Microsoft.Dnx.Runtime.Common.DependencyInjection;
 using Microsoft.Dnx.Runtime.DependencyManagement;
 using Microsoft.Dnx.Runtime.FileSystem;
+using Microsoft.Dnx.Runtime.Helpers;
 using Microsoft.Dnx.Runtime.Infrastructure;
 using Microsoft.Dnx.Runtime.Loader;
 using NuGet;
@@ -37,8 +38,7 @@ namespace Microsoft.Dnx.Runtime
         {
             ProjectDirectory = projectDirectory;
             Configuration = configuration;
-            RootDirectory = Runtime.ProjectResolver.ResolveRootDirectory(ProjectDirectory);
-            ProjectResolver = new ProjectResolver(ProjectDirectory, RootDirectory);
+            RootDirectory = ProjectPathHelper.ResolveRootDirectory(ProjectDirectory);
             FrameworkReferenceResolver = new FrameworkReferenceResolver();
             _serviceProvider = new ServiceProvider(hostServices);
 
@@ -47,13 +47,13 @@ namespace Microsoft.Dnx.Runtime
             var referenceAssemblyDependencyResolver = new ReferenceAssemblyDependencyResolver(FrameworkReferenceResolver);
             NuGetDependencyProvider = new NuGetDependencyResolver(new PackageRepository(PackagesDirectory));
             var gacDependencyResolver = new GacDependencyResolver();
-            ProjectDepencyProvider = new ProjectReferenceDependencyProvider(ProjectResolver);
             var unresolvedDependencyProvider = new UnresolvedDependencyProvider();
 
             var projectName = PathUtility.GetDirectoryName(ProjectDirectory);
 
+            // Read the currect project directly from given project directory
             Project project;
-            if (ProjectResolver.TryResolveProject(projectName, out project))
+            if (Project.TryGetProject(ProjectDirectory, out project))
             {
                 Project = project;
             }
@@ -82,6 +82,9 @@ namespace Microsoft.Dnx.Runtime
                 {
                     NuGetDependencyProvider.ApplyLockFile(_lockFile);
 
+                    ProjectResolver = new LockFileBasedProjectResolver(_lockFile, ProjectDirectory, Project);
+                    ProjectDepencyProvider = new ProjectReferenceDependencyProvider(ProjectResolver);
+
                     DependencyWalker = new DependencyWalker(new IDependencyProvider[] {
                         ProjectDepencyProvider,
                         NuGetDependencyProvider,
@@ -94,10 +97,10 @@ namespace Microsoft.Dnx.Runtime
 
             if ((!validLockFile && !skipLockFileValidation) || !lockFileExists)
             {
-                // We don't add NuGetDependencyProvider to DependencyWalker
-                // It will leave all NuGet packages unresolved and give error message asking users to run "dnu restore"
+                // We don't add NuGetDependencyProvider or ProjectDependencyResolver to DependencyWalker
+                // It will leave all NuGet packages and project reference unresolved and give error message 
+                // asking users to run "dnu restore"
                 DependencyWalker = new DependencyWalker(new IDependencyProvider[] {
-                    ProjectDepencyProvider,
                     referenceAssemblyDependencyResolver,
                     gacDependencyResolver,
                     unresolvedDependencyProvider

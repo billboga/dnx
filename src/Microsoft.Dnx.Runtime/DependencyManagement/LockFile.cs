@@ -15,6 +15,7 @@ namespace Microsoft.Dnx.Runtime.DependencyManagement
         public IList<ProjectFileDependencyGroup> ProjectFileDependencyGroups { get; set; } = new List<ProjectFileDependencyGroup>();
         public IList<LockFileLibrary> Libraries { get; set; } = new List<LockFileLibrary>();
         public IList<LockFileTarget> Targets { get; set; } = new List<LockFileTarget>();
+        public IList<LockFileProjectLocation> ProjectLocations { get; set; } = new List<LockFileProjectLocation>();
 
         public IEnumerable<DiagnosticMessage> GetDiagnostics(Project project)
         {

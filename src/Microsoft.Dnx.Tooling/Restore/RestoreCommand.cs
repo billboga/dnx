@@ -9,16 +9,14 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Runtime.Versioning;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Dnx.Runtime;
+using Microsoft.Dnx.Runtime.DependencyManagement;
+using Microsoft.Dnx.Runtime.Helpers;
 using Microsoft.Dnx.Tooling.Publish;
-using Microsoft.Dnx.Tooling.Restore;
 using Microsoft.Dnx.Tooling.Restore.RuntimeModel;
 using Microsoft.Dnx.Tooling.Utils;
-using Microsoft.Dnx.Runtime;
-using Microsoft.Dnx.Compilation;
-using Microsoft.Dnx.Runtime.DependencyManagement;
 using NuGet;
 
 namespace Microsoft.Dnx.Tooling
@@ -118,7 +116,7 @@ namespace Microsoft.Dnx.Tooling
             foreach (var category in InformationMessages)
             {
                 Reports.Quiet.WriteLine($"{Environment.NewLine}{category.Key}");
-                foreach(var message in category.Value)
+                foreach (var message in category.Value)
                 {
                     Reports.Quiet.WriteLine($"    {message}");
                 }
@@ -167,7 +165,7 @@ namespace Microsoft.Dnx.Tooling
                     return false;
                 }
 
-                var rootDirectory = ProjectResolver.ResolveRootDirectory(restoreDirectory);
+                var rootDirectory = ProjectPathHelper.ResolveRootDirectory(restoreDirectory);
                 ReadSettings(rootDirectory);
 
                 string packagesDirectory = FeedOptions.TargetPackagesFolder;
@@ -296,7 +294,7 @@ namespace Microsoft.Dnx.Tooling
             }
 
             var projectDirectory = project.ProjectDirectory;
-            var projectResolver = new ProjectResolver(projectDirectory, rootDirectory);
+            var projectResolver = new PathSearchBasedProjectResolver(projectDirectory, rootDirectory);
             var packageRepository = new PackageRepository(packagesDirectory)
             {
                 CheckHashFile = CheckHashFile
@@ -546,6 +544,7 @@ namespace Microsoft.Dnx.Tooling
                               project,
                               graphItems,
                               repository,
+                              projectResolver,
                               targetContexts);
             }
 
@@ -809,6 +808,7 @@ namespace Microsoft.Dnx.Tooling
                                    Runtime.Project project,
                                    List<GraphItem> graphItems,
                                    PackageRepository repository,
+                                   IProjectResolver projectResolver,
                                    IEnumerable<TargetContext> contexts)
         {
             var resolver = new DefaultPackagePathResolver(repository.RepositoryRoot);
@@ -838,6 +838,16 @@ namespace Microsoft.Dnx.Tooling
 
                 if (packageInfo == null)
                 {
+                    if (library.Name != project.Name)
+                    {
+                        Runtime.Project projectReference;
+                        if (projectResolver.TryResolveProject(library.Name, out projectReference))
+                        {
+                            var projectLocation = new LockFileProjectLocation(project, projectReference);
+                            lockFile.ProjectLocations.Add(projectLocation);
+                        }
+                    }
+
                     continue;
                 }
 

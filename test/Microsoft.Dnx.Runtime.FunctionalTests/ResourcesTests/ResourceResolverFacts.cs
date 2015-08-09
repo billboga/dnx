@@ -1,9 +1,9 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.IO;
 using System.Linq;
+using Microsoft.Dnx.Runtime.Helpers;
 using Microsoft.Dnx.Runtime.Internal;
 using Xunit;
 
@@ -14,7 +14,7 @@ namespace Microsoft.Dnx.Runtime.FunctionalTests.ResourcesTests
         [Fact]
         public void ResolveEmbeddedResources()
         {
-            var rootDir = ProjectResolver.ResolveRootDirectory(Directory.GetCurrentDirectory());
+            var rootDir = ProjectPathHelper.ResolveRootDirectory(Directory.GetCurrentDirectory());
             var testProjectFolder = Path.Combine(rootDir, "misc", "ResourcesTestProjects", "testproject");
 
             Project project;
@@ -38,7 +38,7 @@ namespace Microsoft.Dnx.Runtime.FunctionalTests.ResourcesTests
                 "testproject.subfolder.nestedresource.resources",
                 "testproject.OtherResources.resources"
             };
-            var rootDir = ProjectResolver.ResolveRootDirectory(Directory.GetCurrentDirectory());
+            var rootDir = ProjectPathHelper.ResolveRootDirectory(Directory.GetCurrentDirectory());
             var testProjectFolder = Path.Combine(rootDir, "misc", "ResourcesTestProjects", "testproject");
 
             Project project;
@@ -54,7 +54,7 @@ namespace Microsoft.Dnx.Runtime.FunctionalTests.ResourcesTests
         [Fact]
         public void ResolveRenamedResxResources()
         {
-            var rootDir = ProjectResolver.ResolveRootDirectory(Directory.GetCurrentDirectory());
+            var rootDir = ProjectPathHelper.ResolveRootDirectory(Directory.GetCurrentDirectory());
             var testProjectFolder = Path.Combine(rootDir, "misc", "ResourcesTestProjects", "testproject");
 
             Project project = ProjectUtilities.GetProject(@"
@@ -84,7 +84,7 @@ namespace Microsoft.Dnx.Runtime.FunctionalTests.ResourcesTests
                 "testproject.subfolder.nestedresource.resources",
                 "thisIs.New.Resource.resources"
             };
-            var rootDir = ProjectResolver.ResolveRootDirectory(Directory.GetCurrentDirectory());
+            var rootDir = ProjectPathHelper.ResolveRootDirectory(Directory.GetCurrentDirectory());
             var testProjectFolder = Path.Combine(rootDir, "misc", "ResourcesTestProjects", "testproject");
 
             Project project = ProjectUtilities.GetProject(@"

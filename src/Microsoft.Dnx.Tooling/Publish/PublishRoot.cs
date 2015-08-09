@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Dnx.Runtime;
+using Microsoft.Dnx.Runtime.Helpers;
 using Newtonsoft.Json.Linq;
 using NuGet;
 
@@ -120,7 +121,7 @@ namespace Microsoft.Dnx.Tooling.Publish
 
                 File.WriteAllText(
                     Path.Combine(OutputPath, commandName + ".cmd"),
-                    string.Format(template, 
+                    string.Format(template,
                                   runtimeFolder,
                                   Runtime.Constants.BootstrapperExeName,
                                   relativeAppBase,
@@ -167,11 +168,11 @@ exec ""{2}{3}"" --appbase ""${0}"" Microsoft.Dnx.ApplicationHost --configuration
 
                 var scriptPath = Path.Combine(OutputPath, commandName);
                 File.WriteAllText(scriptPath,
-                    string.Format(template, 
+                    string.Format(template,
                                   EnvironmentNames.AppBase,
                                   relativeAppBase,
                                   runtimeFolder,
-                                  Runtime.Constants.BootstrapperExeName, 
+                                  Runtime.Constants.BootstrapperExeName,
                                   Configuration,
                                   commandName).Replace("\r\n", "\n"));
 
@@ -187,7 +188,7 @@ exec ""{2}{3}"" --appbase ""${0}"" Microsoft.Dnx.ApplicationHost --configuration
 
         private void WriteGlobalJson()
         {
-            var rootDirectory = ProjectResolver.ResolveRootDirectory(_project.ProjectDirectory);
+            var rootDirectory = ProjectPathHelper.ResolveRootDirectory(_project.ProjectDirectory);
 
             var rootObject = default(JObject);
             if (GlobalSettings.HasGlobalFile(rootDirectory))

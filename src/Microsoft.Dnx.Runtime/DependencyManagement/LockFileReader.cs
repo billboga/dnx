@@ -34,7 +34,7 @@ namespace Microsoft.Dnx.Runtime.DependencyManagement
                 }
             }
         }
-        
+
         private static FileStream OpenFileStream(string filePath)
         {
             // Retry 3 times before re-throw the exception.
@@ -98,6 +98,7 @@ namespace Microsoft.Dnx.Runtime.DependencyManagement
             lockFile.Libraries = ReadObject(cursor.ValueAsJsonObject("libraries"), ReadLibrary);
             lockFile.Targets = ReadObject(cursor.ValueAsJsonObject("targets"), ReadTarget);
             lockFile.ProjectFileDependencyGroups = ReadObject(cursor.ValueAsJsonObject("projectFileDependencyGroups"), ReadProjectFileDependencyGroup);
+            lockFile.ProjectLocations = ReadObject(cursor.ValueAsJsonObject("projects"), ReadProjectLocation);
             return lockFile;
         }
 
@@ -168,6 +169,11 @@ namespace Microsoft.Dnx.Runtime.DependencyManagement
             library.NativeLibraries = ReadObject(jobject.ValueAsJsonObject("native"), ReadFileItem);
 
             return library;
+        }
+
+        private LockFileProjectLocation ReadProjectLocation(string property, JsonValue json)
+        {
+            return new LockFileProjectLocation(property, ReadString(json));
         }
 
         private ProjectFileDependencyGroup ReadProjectFileDependencyGroup(string property, JsonValue json)
