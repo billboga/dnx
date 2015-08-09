@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.Versioning;
 using NuGet;
 
 namespace Microsoft.Dnx.Runtime.DependencyManagement
@@ -19,15 +18,6 @@ namespace Microsoft.Dnx.Runtime.DependencyManagement
         public string Sha512 { get; set; }
 
         public IList<string> Files { get; set; } = new List<string>();
-    }
-
-    public class LockFileTarget
-    {
-        public FrameworkName TargetFramework { get; set; }
-
-        public string RuntimeIdentifier { get; set; }
-
-        public IList<LockFileTargetLibrary> Libraries { get; set; } = new List<LockFileTargetLibrary>();
     }
 
     public class LockFileTargetLibrary
