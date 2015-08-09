@@ -18,17 +18,4 @@ namespace Microsoft.Dnx.Runtime.DependencyManagement
 
         public IList<string> Files { get; set; } = new List<string>();
     }
-
-    public class LockFileItem
-    {
-        public string Path { get; set; }
-
-        public IDictionary<string, string> Properties { get; } = new Dictionary<string, string>();
-
-        public static implicit operator string (LockFileItem item) => item.Path;
-
-        public static implicit operator LockFileItem(string path) => new LockFileItem { Path = path };
-
-        public override string ToString() => Path;
-    }
 }
