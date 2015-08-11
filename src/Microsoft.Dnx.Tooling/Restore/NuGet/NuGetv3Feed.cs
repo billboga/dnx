@@ -140,6 +140,12 @@ namespace Microsoft.Dnx.Tooling.Restore.NuGet
                                 doc = JObject.Load(new JsonTextReader(reader));
                             }
 
+                            if (doc["versions"] == null)
+                            {
+                                // Absence of "versions" property is equivalent to an empty "versions" array
+                                return Enumerable.Empty<PackageInfo>();
+                            }
+
                             var result = doc["versions"]
                                 .Select(x => BuildModel(id, x.ToString()))
                                 .Where(x => x != null);
@@ -256,8 +262,9 @@ namespace Microsoft.Dnx.Tooling.Restore.NuGet
                 var json = JObject.Load(new JsonTextReader(new StreamReader(stream)));
                 if (json["versions"] == null)
                 {
-                    throw new InvalidDataException(
-                        $"{message} The response doesn't contain 'versions' property.");
+                    // If the response is a valid JSON that doesn't contain "versions" property,
+                    // we treat it as an empty "versions" array
+                    return;
                 }
 
                 if (!(json["versions"] is JArray))
